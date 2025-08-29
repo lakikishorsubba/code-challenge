@@ -4,6 +4,7 @@ import { useState } from "react";
 import { validEmail, validPassword } from "../utilities/validation";
 import { Link } from "react-router-dom";
 import { registerApi, loginApi } from "../apis/authentication";
+import { useGoogleLogin } from "@react-oauth/google";
 
 export const PageType = Object.freeze({
   LOGIN: 0,
@@ -19,6 +20,7 @@ const Authentication = ({ PageType: pageType }) => {
   const [errors, setErrors] = useState(initialErrorsState);
   const [loading, setLoading] = useState(false);
 
+  // Normal login/register handlers
   const handleEmailChange = (e) => setEmail(e.target.value);
   const handlePasswordChange = (e) => setPassword(e.target.value);
 
@@ -41,7 +43,6 @@ const Authentication = ({ PageType: pageType }) => {
     setErrors(tempErrors);
     if (hasError) return;
 
-    
     setLoading(true);
     const body = { email, password };
 
@@ -57,10 +58,32 @@ const Authentication = ({ PageType: pageType }) => {
       setErrors((prev) => ({ ...prev, api: apiError }));
     } else {
       console.log("API Success:", result);
- 
-        navigate("/"); // Redirect to home page after successful login/register
+      navigate("/"); // Redirect after success
     }
   };
+
+  // Google login handler
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await fetch("http://localhost:3000/users/auth/google_oauth2/callback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenResponse.access_token }),
+        });
+        const data = await res.json();
+        console.log("Google Login Success:", data);
+        navigate("/"); // Redirect after success
+      } catch (err) {
+        console.log("Google Login Error:", err);
+        setErrors((prev) => ({ ...prev, api: "Google login failed" }));
+      }
+    },
+    onError: (err) => {
+      console.log("Google login error", err);
+      setErrors((prev) => ({ ...prev, api: "Google login failed" }));
+    },
+  });
 
   return (
     <div className="bg-white min-h-screen flex items-center justify-center">
@@ -68,6 +91,7 @@ const Authentication = ({ PageType: pageType }) => {
         <h1 className="text-2xl font-bold mb-6">
           {pageType === PageType.LOGIN ? "Login" : "Register"}
         </h1>
+
         {pageType === PageType.LOGIN ? (
           <p className="mb-4">
             Don't have an account?{" "}
@@ -84,6 +108,7 @@ const Authentication = ({ PageType: pageType }) => {
           </p>
         )}
 
+        {/* Email/Password Form */}
         <form onSubmit={handleSubmit} noValidate>
           <div className="mb-4">
             <input
@@ -93,9 +118,7 @@ const Authentication = ({ PageType: pageType }) => {
               onChange={handleEmailChange}
               className="border border-gray-300 rounded px-3 py-2 w-full"
             />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-            )}
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           <div className="mb-4">
@@ -106,14 +129,10 @@ const Authentication = ({ PageType: pageType }) => {
               onChange={handlePasswordChange}
               className="border border-gray-300 rounded px-3 py-2 w-full"
             />
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-            )}
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
-          {errors.api && (
-            <p className="text-red-500 text-sm mb-3">{errors.api}</p>
-          )}
+          {errors.api && <p className="text-red-500 text-sm mb-3">{errors.api}</p>}
 
           <button
             type="submit"
@@ -127,13 +146,21 @@ const Authentication = ({ PageType: pageType }) => {
               : "Register"}
           </button>
         </form>
+
+        {/* Google Login Button */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => loginWithGoogle()}
+            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded"
+          >
+            Login with Google
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-Authentication.propTypes = {
-  PageType: PropTypes.number.isRequired,
-};
+Authentication.propTypes = { PageType: PropTypes.number.isRequired };
 
 export default Authentication;

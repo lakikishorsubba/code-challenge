@@ -311,6 +311,11 @@ Devise.setup do |config|
   # When set to false, does not sign a user in automatically after their password is
   # changed. Defaults to true, so a user is signed in automatically after changing a password.
   # config.sign_in_after_change_password = true
+  
+  # Ensure OmniAuth routes use the session
+  Rails.application.config.middleware.use ActionDispatch::Cookies
+  Rails.application.config.middleware.use ActionDispatch::Session::CookieStore
+
   config.jwt do |jwt|
   jwt.secret = Rails.application.credentials.fetch(:secret_key_base)
   jwt.dispatch_requests = [
@@ -322,5 +327,10 @@ Devise.setup do |config|
     'DELETE', %r{^/users/sign_out$}]
   ]
   jwt.expiration_time = 1.day.to_i
-end
+  end
+  config.omniauth :google_oauth2, ENV['GOOGLE_CLIENT_ID'], ENV['GOOGLE_CLIENT_SECRET'], {
+  scope: 'email,profile',
+  prompt: 'select_account',
+  access_type: 'offline'
+}
 end
